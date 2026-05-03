@@ -3,115 +3,163 @@
 # 或者运行目录下的config.yml
 #---------------------------------------------------#
 
-mixed-port: 7890             # 监听端口，支持 HTTP 和 SOCKS 协议混合使用
-ipv6: false                 # 是否启用 IPv6 支持，启用时为 true，否则 false
-allow-lan: true             # 是否允许局域网设备连接代理服务
-unified-delay: true         # 是否启用统一延迟模式，用以平衡测速结果的稳定性
-tcp-concurrent: true        # 是否启用 TCP 并发连接，提高连接速度
-global-client-fingerprint: chrome  # 伪装浏览器指纹，提升兼容性
-keep-alive-idle: 600        # TCP KeepAlive 空闲时间，单位秒
-keep-alive-interval: 15     # TCP KeepAlive 包间隔时间，单位秒
-external-controller: '127.0.0.1:9090'  # 外部控制监听地址和端口（本地默认）
+# ============================================
+# 基础设置
+# ============================================
+mixed-port: 7890                          # 混合代理端口，同时支持 HTTP/SOCKS5
+ipv6: true                                # 内核允许 IPv6 出站（节点可走 IPv6 优化路由）
+allow-lan: true                           # 允许局域网设备连接代理
+unified-delay: true                       # 统一延迟计算，测速结果更真实
+tcp-concurrent: true                      # TCP 并发连接，多 IP 时同时尝试提升速度
+find-process-mode: strict                 # 严格进程匹配，确保 PROCESS-NAME 规则生效
+global-client-fingerprint: chrome         # 全局 TLS 指纹伪装为 Chrome
+keep-alive-idle: 600                      # TCP 连接空闲保活时间（秒）
+keep-alive-interval: 15                   # TCP 保活探测间隔（秒）
+external-controller: '127.0.0.1:9090'     # 外部控制器地址（Web UI / API）
+# secret: ''                              # 控制器密钥，建议设置随机字符串
 
+# ============================================
+# GEO 数据配置
+# ============================================
+geodata-mode: true                        # 使用 .dat 格式 GEO 数据（比 .mmdb 规则更全）
+geodata-loader: standard                  # 标准加载器
+geo-auto-update: true                     # 自动更新 GEO 数据文件
+geo-update-interval: 24                   # 更新间隔（小时）
+geox-url:                                 # GEO 数据下载地址
+  geoip: "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+  geosite: "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+  mmdb: "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
+  asn: "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/GeoLite2-ASN.mmdb"
+
+# ============================================
+# 缓存与持久化
+# ============================================
 profile:
-  store-selected: true      # 记录用户选择的节点，方便下次自动使用
-  store-fake-ip: true       # 存储 Fake IP 地址缓存，提高 Fake IP 效率
+  store-selected: true                    # 记住用户选择的策略组节点，重启不丢失
+  store-fake-ip: true                     # 持久化 fake-ip 映射缓存，重启后域名映射不变
 
-cfw-latency-url: https://connectivitycheck.gstatic.com/generate_204  # 用于测速的URL
-cfw-latency-type: 1        # 测速类型，1 表示 HTTP 测速
-cfw-latency-timeout: 5000  # 测速超时时间，单位毫秒
-cfw-conn-break-strategy: true  # 启用连接中断策略，提升连接可靠性
-
+# ============================================
+# Android 客户端专用
+# ============================================
 clash-for-android:
-  append-system-dns: false  # 是否附加系统DNS，安卓App专用
-  ui-subtitle-pattern: "[一-龥]{2,4}"  # UI 显示的子标题正则，匹配中文2到4个字符
+  append-system-dns: false                # 不追加系统 DNS，避免干扰自定义 DNS 配置
+  ui-subtitle-pattern: "[一-龥]{2,4}"     # UI 副标题正则，匹配 2-4 个中文字符
 
+# ============================================
+# 流量嗅探
+# ============================================
 sniffer:
-  enable: true               # 启用嗅探功能，解析流量类型
-  parse-pure-ip: true        # 是否识别纯IP流量
-  sniff:                    # 嗅探协议和端口设置
-    HTTP: 
-      ports: [80, 8080-8880]
-      override-destination: true
+  enable: true                            # 启用协议嗅探，从流量中提取真实域名
+  parse-pure-ip: true                     # 对纯 IP 连接也尝试嗅探域名
+  sniff:                                  # 嗅探的协议及端口
+    HTTP:
+      ports: [80, 8080-8880]              # HTTP 嗅探端口范围
+      override-destination: true          # 用嗅探到的域名覆盖原始目标地址
     TLS:
-      ports: [443, 8443]
+      ports: [443, 8443]                  # TLS/HTTPS 嗅探端口
     QUIC:
-      ports: [443, 8443]
-  force-domain:             # 强制嗅探指定域名
+      ports: [443, 8443]                  # QUIC (HTTP/3) 嗅探端口（TUN 模式下有效）
+  force-domain:                           # 强制对这些域名进行嗅探
     - +.v2ex.com
-  skip-domain:              # 跳过嗅探的域名列表
-    - dlg.io.mi.com
-    - +.push.apple.com
-    - +.apple.com
+  skip-domain:                            # 跳过嗅探的域名（嗅探会干扰这些服务）
+    - "Mijia Cloud"                       # 小米物联网设备标识
+    - dlg.io.mi.com                       # 小米设备日志
+    - +.push.apple.com                    # Apple 推送服务
+    - +.apple.com                         # Apple 服务
 
+# ============================================
+# TUN 模式（系统级全局代理）
+# ============================================
 tun:
-  enable: true              # 启用 TUN 模式，绕过系统代理限制
-  stack: mixed              # 网络协议栈，mixed 支持 IPv4 和 IPv6
-  dns-hijack: ['any:53', 'tcp://any:53']  # 劫持 DNS 请求端口，避免 DNS 泄露
-  auto-route: true          # 自动添加路由规则
-  auto-redirect: true       # 自动路由重定向
-  auto-detect-interface: true  # 自动检测网络接口
+  enable: true                            # 启用 TUN 虚拟网卡，捕获所有系统流量
+  stack: mixed                            # 混合协议栈，兼容 TCP/UDP/IPv4/IPv6
+  dns-hijack: ['any:53', 'tcp://any:53']  # 劫持所有 DNS 请求到 mihomo 内置 DNS
+  auto-route: true                        # 自动配置系统路由表
+  auto-redirect: true                     # 自动重定向流量到 TUN
+  auto-detect-interface: true             # 自动检测出站网络接口
 
+# ============================================
+# DNS 配置
+# ============================================
 dns:
-  enable: true              # 启用内置 DNS 解析
-  listen: "0.0.0.0:1053"   # DNS 服务监听地址和端口
-  ipv6: false               # 是否启用 IPv6 DNS 支持
-  prefer-h3: true           # 优先使用 HTTP/3 DNS 解析
-  respect-rules: true       # 遵守规则集的 DNS 策略
-  use-system-hosts: false   # 是否使用系统 Hosts 文件
-  cache-algorithm: "arc"    # DNS 缓存算法，arc 为先进先出改进版
-  enhanced-mode: fake-ip    # DNS 增强模式，fake-ip 可防止 DNS 污染
-  fake-ip-range: 198.18.0.1/16  # fake-ip 地址段，防止冲突
-  fake-ip-filter:           # 不使用 fake-ip 模式的域名列表
-    - +.lan
-    - +.local
-    - connect.rom.miui.com
-    - +.miwifi.com
-    - +.ntp.org
-    - +.u-tools.cn
-    - +.mediatek.com
-    - +.cfprefer1.xyz
-    - +.wetab.link
-    - +.tyasaka.xyz
-    - localhost.ptlogin2.qq.com
-    - localhost.sec.qq.com
-    - localhost.work.weixin.qq.com
-    - +.weixin.qq.com
-    - +.wechat.com
-    - time.windows.com
-    - +.msftconnecttest.com
-    - +.msftncsi.com
-    - +.wpsmail.net
-    - +.henzanapp.com
-    - +.pconline.com.cn
-  default-nameserver:       # 默认 DNS 服务器列表，主要为国内DNS
-    - "223.5.5.5"
-    - "1.2.4.8"
-  nameserver:               # 上游 DNS-over-HTTPS 服务器地址
-    - "https://208.67.222.222/dns-query"
-    - "https://1.1.1.1/dns-query"
-    - "https://8.8.4.4/dns-query"
-  proxy-server-nameserver:  # 走代理时使用的 DNS 服务器
-    - "https://223.5.5.5/dns-query"
-    - "https://120.53.53.53/dns-query"
-  nameserver-policy:        # 域名分流的DNS策略配置
-    "geosite:cn,private":
-      - "https://120.53.53.53/dns-query"
-      - "https://223.5.5.5/dns-query"
-    "geosite:geolocation-!cn":
-      - "https://dns.cloudflare.com/dns-query"
-      - "https://dns.google/dns-query"
+  enable: true                            # 启用内置 DNS 服务
+  listen: "0.0.0.0:1053"                  # DNS 监听地址和端口
+  ipv6: false                             # 不返回 AAAA 记录给客户端（避免直连走未优化 IPv6）
+  prefer-h3: true                         # DoH 优先使用 HTTP/3（QUIC），降低延迟
+  respect-rules: true                     # DNS 查询遵循路由规则（代理域名的 DNS 走代理）
+  use-hosts: true                         # 读取本地 hosts 文件
+  use-system-hosts: true                  # 读取系统 hosts
+  cache-algorithm: arc                    # DNS 缓存算法（ARC：自适应替换缓存，命中率高）
+  enhanced-mode: fake-ip                  # 增强模式：fake-ip（返回虚假 IP，加速连接建立）
+  fake-ip-range: 198.18.0.1/16            # fake-ip 使用的地址段
+  fake-ip-filter-mode: blacklist          # 黑名单模式：列表中的域名不使用 fake-ip
+  fake-ip-filter:                         # 需要真实 IP 的域名（不返回 fake-ip）
+    # --- 基础 ---
+    - '+.lan'                             # 局域网域名
+    - '+.local'                           # mDNS 本地域名（AirPlay/Bonjour）
+    # --- NTP 时间同步 ---
+    - 'geosite:category-ntp'              # 国际 NTP 服务器
+    - 'geosite:category-ntp-cn'           # 国内 NTP 服务器
+    - 'geosite:category-ntp-jp'           # 日本 NTP 服务器
+    # --- STUN/WebRTC（音视频通话 NAT 穿透）---
+    - '+.l.google.com'                    # Google STUN 服务器
+    - 'stun.qq.com'                       # 腾讯 STUN
+    - '+.voip.qq.com'                     # QQ 语音通话
+    - '+.stun.*.*'                        # 通用 STUN 域名
+    - '+.stun.*.*.*'                      # 通用 STUN 域名（三段）
+    # --- 系统连通性检测 ---
+    - '+.msftconnecttest.com'             # Windows 网络连通性检测（NCSI）
+    - '+.msftncsi.com'                    # Windows NCSI 旧域名
+    - connect.rom.miui.com                # MIUI 连通性检测
+    # --- 微信/QQ ---
+    - localhost.ptlogin2.qq.com           # QQ 登录本地回调
+    - localhost.sec.qq.com                # QQ 安全中心回调
+    - localhost.work.weixin.qq.com        # 企业微信本地回调
+    - '+.weixin.qq.com'                   # 微信核心服务（推送/登录/支付）
+    - '+.wechat.com'                      # 微信国际版
+    # --- 设备相关 ---
+    - '+.miwifi.com'                      # 小米路由器管理后台
+    - '+.mediatek.com'                    # 联发科芯片 OTA/验证
 
-cfw-bypass:                 # 系统代理跳过列表（起作用）
-  - "*.cn"
-  - "*.xn--fiqs8s"
-  - "*.xn--55qx5d"
-  - "*.xn--io0a7i"
-  - "*alicdn*"
-  - "*alipay*"
-  - "*bilibili*"
-  - "*xiaomi*"
-  - "*.360.com"
-  - "*.alibaba.com"
-  - "*.aliyun.com"
-  - "*.aliyundrive.com"
+  # Bootstrap DNS（解析 DoH 服务器域名用，必须是纯 IP）
+  default-nameserver:
+    - 223.5.5.5                           # 阿里 DNS
+    - 119.29.29.29                        # 腾讯 DNS
+
+  # 主 DNS 服务器（国内直达，负责常规解析）
+  nameserver:
+    - https://doh.pub/dns-query           # 腾讯 DoH
+    - https://dns.alidns.com/dns-query    # 阿里 DoH
+
+  # 境外 DNS 回退（走代理隧道，防止 DNS 污染）
+  fallback:
+    - https://8.8.8.8/dns-query#PROXY     # Google DNS（经代理）
+    - https://1.1.1.1/dns-query#PROXY     # Cloudflare DNS（经代理）
+    - https://208.67.222.222/dns-query#PROXY  # OpenDNS（经代理）
+
+  # Fallback 触发条件（满足任一条件时采用 fallback 结果）
+  fallback-filter:
+    geoip: true                           # 启用 GeoIP 判断
+    geoip-code: CN                        # nameserver 结果为非 CN IP 时触发 fallback
+    geosite:                              # 这些类目的域名直接走 fallback
+      - gfw                               # GFW 已知封锁域名
+    ipcidr:                               # nameserver 返回这些 IP 时视为污染
+      - 240.0.0.0/4                       # E 类保留地址（经典污染特征）
+      - 0.0.0.0/32                        # 全零地址（DNS 屏蔽返回）
+      - 127.0.0.1/32                      # 回环地址（DNS 屏蔽返回）
+
+  # 代理节点域名解析（代理建立前使用，必须国内直达）
+  proxy-server-nameserver:
+    - https://doh.pub/dns-query           # 腾讯 DoH
+    - https://dns.alidns.com/dns-query    # 阿里 DoH
+
+  # 按域名分类指定 DNS
+  nameserver-policy:
+    # 国内域名 + 私有域名 → 国内 DoH（快速直达）
+    "geosite:cn,private":
+      - https://doh.pub/dns-query         # 腾讯 DoH
+      - https://223.5.5.5/dns-query       # 阿里 DoH（IP 形式兜底）
+    # 被墙域名 + 非中国域名 → 境外 DoH（走代理，无递归依赖）
+    "geosite:gfw,geolocation-!cn":
+      - https://8.8.8.8/dns-query#PROXY   # Google DNS（IP 形式，经代理）
+      - https://1.1.1.1/dns-query#PROXY   # Cloudflare DNS（IP 形式，经代理）
