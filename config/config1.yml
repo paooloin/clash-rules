@@ -133,9 +133,9 @@ dns:
 
   # 境外 DNS 回退（走代理隧道，防止 DNS 污染）
   fallback:
-    - https://8.8.8.8/dns-query#PROXY     # Google DNS（经代理）
-    - https://1.1.1.1/dns-query#PROXY     # Cloudflare DNS（经代理）
-    - https://208.67.222.222/dns-query#PROXY  # OpenDNS（经代理）
+    - https://8.8.8.8/dns-query     # Google DNS（经代理）
+    - https://1.1.1.1/dns-query     # Cloudflare DNS（经代理）
+    - https://208.67.222.222/dns-query  # OpenDNS（经代理）
 
   # Fallback 触发条件（满足任一条件时采用 fallback 结果）
   fallback-filter:
@@ -161,5 +161,5 @@ dns:
       - https://223.5.5.5/dns-query       # 阿里 DoH（IP 形式兜底）
     # 被墙域名 + 非中国域名 → 境外 DoH（走代理，无递归依赖）
     "geosite:gfw,geolocation-!cn":
-      - https://8.8.8.8/dns-query#PROXY   # Google DNS（IP 形式，经代理）
-      - https://1.1.1.1/dns-query#PROXY   # Cloudflare DNS（IP 形式，经代理）
+      - https://8.8.8.8/dns-query   # Google DNS（IP 形式，经代理）
+      - https://1.1.1.1/dns-query   # Cloudflare DNS（IP 形式，经代理）
